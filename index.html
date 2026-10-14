@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>지구를 구하는 분리배출 척척 박사</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 눈에 편안하고 친근한 마루부리 / 나눔스퀘어 글꼴 설정 -->
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Nanum Gothic', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .game-font {
+      font-family: 'Nanum Gothic', sans-serif;
+    }
+    /* 통통 튀는 애니메이션 */
+    @keyframes bounce-slow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .bounce-item {
+      animation: bounce-slow 2s infinite ease-in-out;
+    }
+    /* 반짝이는 가이드 펄스 */
+    @keyframes guide-pulse {
+      0%, 100% { box-shadow: 0 0 0 0px rgba(59, 130, 246, 0.7); }
+      50% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+    }
+    .guide-active {
+      animation: guide-pulse 1.5s infinite;
+    }
+  </style>
+</head>
+<body class="bg-emerald-50 min-h-screen flex flex-col justify-between overflow-x-hidden text-gray-800">
+
+  <!-- ================= [1. 인트로/시작 화면] ================= -->
+  <div id="start-screen" class="fixed inset-0 bg-gradient-to-br from-teal-400 to-emerald-600 flex flex-col items-center justify-center p-4 z-50 transition-all duration-500">
+    <div class="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl border-4 border-yellow-300">
+      <div class="text-6xl mb-4 bounce-item">🌍♻️</div>
+      <h1 class="text-3xl md:text-4xl font-extrabold text-emerald-700 mb-2">분리배출 척척 박사</h1>
+      <p class="text-gray-600 mb-8 font-semibold">우리 함께 쓰레기를 올바른 곳에 버려 보아요!</p>
+
+      <div class="space-y-6 text-left">
+        <!-- 이름 입력 (개인 맞춤형 피드백을 위함) -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">내 이름을 입력해 주세요</label>
+          <input type="text" id="player-name" placeholder="멋쟁이 친구" value="우리반 친구" 
+                 class="w-full px-4 py-3 rounded-xl border-2 border-emerald-300 text-lg font-bold focus:outline-none focus:border-emerald-500 text-center">
+        </div>
+
+        <!-- 문제 개수 조절 (5, 10, 15, 20개) -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-2">도전할 쓰레기 개수</label>
+          <div class="grid grid-cols-4 gap-2">
+            <button onclick="setTrashCount(5)" id="btn-count-5" class="py-3 rounded-xl border-2 font-extrabold text-xl transition-all border-emerald-500 bg-emerald-500 text-white shadow-md">5개</button>
+            <button onclick="setTrashCount(10)" id="btn-count-10" class="py-3 rounded-xl border-2 font-extrabold text-xl transition-all border-gray-300 bg-white hover:border-emerald-400">10개</button>
+            <button onclick="setTrashCount(15)" id="btn-count-15" class="py-3 rounded-xl border-2 font-extrabold text-xl transition-all border-gray-300 bg-white hover:border-emerald-400">15개</button>
+            <button onclick="setTrashCount(20)" id="btn-count-20" class="py-3 rounded-xl border-2 font-extrabold text-xl transition-all border-gray-300 bg-white hover:border-emerald-400">20개</button>
+          </div>
+        </div>
+
+        <!-- 쉬운 모드 가이드 토글 -->
+        <div class="flex items-center justify-between p-3 bg-teal-50 rounded-xl border border-teal-200">
+          <div>
+            <span class="block font-bold text-teal-800">도움말 힌트 모드</span>
+            <span class="text-xs text-teal-600">카드와 수거함의 색상을 맞춰 힌트를 줍니다.</span>
+          </div>
+          <button onclick="toggleEasyMode()" id="btn-easy-mode" class="px-4 py-2 bg-emerald-500 text-white font-bold rounded-lg transition-all">켜짐</button>
+        </div>
+      </div>
+
+      <button onclick="startGame()" class="mt-8 w-full py-4 bg-yellow-400 hover:bg-yellow-500 text-teal-950 font-black text-2xl rounded-2xl shadow-lg transform active:scale-95 transition-all">
+        시작해요! 🎮
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ================= [2. 메인 게임 화면] ================= -->
+  <header class="bg-white border-b-4 border-emerald-100 p-4 shadow-sm">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- 타이틀 & 플레이어 이름 -->
+      <div class="flex items-center space-x-3">
+        <span class="text-3xl">🌿</span>
+        <div>
+          <h2 class="font-extrabold text-lg text-emerald-800">지구를 지키는 분리배출 교실</h2>
+          <p class="text-xs text-gray-500"><span id="display-player-name" class="font-bold text-teal-600">우리반 친구</span> 박사님, 환영해요!</p>
+        </div>
+      </div>
+
+      <!-- 진행률 & 스코어 -->
+      <div class="flex items-center space-x-6">
+        <div class="bg-emerald-100 px-4 py-2 rounded-xl flex items-center space-x-2">
+          <span class="text-emerald-700 font-extrabold text-sm md:text-base">진행률</span>
+          <div class="w-24 md:w-36 bg-gray-200 h-4 rounded-full overflow-hidden">
+            <div id="progress-bar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+          <span id="progress-text" class="font-bold text-emerald-800 text-xs md:text-sm">0/5</span>
+        </div>
+
+        <div class="bg-yellow-100 px-4 py-2 rounded-xl text-yellow-800 font-extrabold flex items-center space-x-1">
+          <span>⭐ 점수:</span>
+          <span id="score-text" class="text-lg">0점</span>
+        </div>
+      </div>
+
+      <!-- 제어 버튼 (음성 및 초기화) -->
+      <div class="flex space-x-2">
+        <button onclick="toggleTTS()" id="btn-tts" class="p-2 bg-blue-100 hover:bg-blue-200 rounded-xl text-blue-700 font-extrabold text-sm flex items-center space-x-1" title="설명 음성 켜고 끄기">
+          <span id="tts-icon">🔊</span> <span class="hidden md:inline">설명 읽기</span>
+        </button>
+        <button onclick="resetToHome()" class="p-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-bold text-sm">
+          처음으로 🏠
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 게임 영역 -->
+  <main class="max-w-6xl mx-auto p-4 flex-grow flex flex-col justify-center items-center w-full">
+    
+    <!-- 1. 쓰레기 제시 구역 (스포트라이트) -->
+    <div class="w-full max-w-xl bg-white rounded-3xl p-6 md:p-8 shadow-xl border-4 border-dashed border-emerald-300 mb-8 relative">
+      <!-- 힌트 가이드 말풍선 -->
+      <div id="speech-bubble" class="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-yellow-300 text-yellow-950 px-4 py-1.5 rounded-full font-bold text-xs md:text-sm shadow-md whitespace-nowrap">
+        이 쓰레기는 어디에 버려야 할까요? 🤔
+      </div>
+
+      <!-- 쓰레기 카드 본체 -->
+      <div id="trash-container" class="flex flex-col items-center justify-center p-4">
+        <div id="active-trash-card" draggable="true"
+             class="bg-gray-50 border-4 border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:scale-105 transition-all shadow-md w-full max-w-xs relative bounce-item">
+          
+          <!-- 쓰레기 큰 아이콘 -->
+          <div id="trash-emoji" class="text-7xl md:text-8xl mb-3">📦</div>
+          
+          <!-- 쓰레기 이름 -->
+          <h3 id="trash-name" class="text-2xl md:text-3xl font-extrabold text-gray-800 mb-2">상자</h3>
+          
+          <!-- 배출 요령 텍스트 -->
+          <p id="trash-desc" class="text-sm text-gray-500 text-center font-medium leading-relaxed bg-white p-2 rounded-xl border border-gray-100 w-full">
+            테이프를 떼어내고 깨끗이 접어 버려요.
+          </p>
+
+          <!-- 드래그/터치 유도 가이드 -->
+          <span class="mt-4 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full animate-pulse">
+            👆 터치하거나 마우스로 끌어보세요!
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 분리배출함 구역 -->
+    <div class="w-full">
+      <h3 class="text-center font-black text-xl md:text-2xl text-emerald-800 mb-4">🎨 올바른 수거함에 쏙 넣어주세요!</h3>
+      
+      <!-- 수거함 5종 그리드 -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 max-w-5xl mx-auto px-2">
+        
+        <!-- 종이 수거함 -->
+        <div data-category="paper" class="bin-target bg-blue-50 hover:bg-blue-100 border-4 border-blue-400 rounded-2xl p-4 flex flex-col items-center justify-between text-center transition-all cursor-pointer h-44 md:h-52 shadow-md relative">
+          <span class="absolute top-2 right-2 text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full font-bold">종이</span>
+          <div class="text-5xl md:text-6xl my-auto">📦</div>
+          <div class="w-full bg-blue-500 text-white font-extrabold py-2 rounded-xl text-base md:text-lg">종이류</div>
+        </div>
+
+        <!-- 비닐 수거함 -->
+        <div data-category="vinyl" class="bin-target bg-pink-50 hover:bg-pink-100 border-4 border-pink-400 rounded-2xl p-4 flex flex-col items-center justify-between text-center transition-all cursor-pointer h-44 md:h-52 shadow-md relative">
+          <span class="absolute top-2 right-2 text-xs bg-pink-200 text-pink-800 px-2 py-0.5 rounded-full font-bold">비닐</span>
+          <div class="text-5xl md:text-6xl my-auto">🛍️</div>
+          <div class="w-full bg-pink-500 text-white font-extrabold py-2 rounded-xl text-base md:text-lg">비닐류</div>
+        </div>
+
+        <!-- 플라스틱 수거함 -->
+        <div data-category="plastic" class="bin-target bg-amber-50 hover:bg-amber-100 border-4 border-amber-400 rounded-2xl p-4 flex flex-col items-center justify-between text-center transition-all cursor-pointer h-44 md:h-52 shadow-md relative">
+          <span class="absolute top-2 right-2 text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold">페트</span>
+          <div class="text-5xl md:text-6xl my-auto">🥤</div>
+          <div class="w-full bg-amber-500 text-white font-extrabold py-2 rounded-xl text-base md:text-lg">플라스틱</div>
+        </div>
+
+        <!-- 캔 수거함 -->
+        <div data-category="can" class="bin-target bg-slate-100 hover:bg-slate-200 border-4 border-slate-500 rounded-2xl p-4 flex flex-col items-center justify-between text-center transition-all cursor-pointer h-44 md:h-52 shadow-md relative">
+          <span class="absolute top-2 right-2 text-xs bg-slate-300 text-slate-800 px-2 py-0.5 rounded-full font-bold">쇠/캔</span>
+          <div class="text-5xl md:text-6xl my-auto">🥫</div>
+          <div class="w-full bg-slate-600 text-white font-extrabold py-2 rounded-xl text-base md:text-lg">캔류</div>
+        </div>
+
+        <!-- 유리 수거함 -->
+        <div data-category="glass" class="bin-target bg-emerald-50 hover:bg-emerald-100 border-4 border-emerald-400 rounded-2xl p-4 flex flex-col items-center justify-between text-center transition-all cursor-pointer h-44 md:h-52 shadow-md relative">
+          <span class="absolute top-2 right-2 text-xs bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">병</span>
+          <div class="text-5xl md:text-6xl my-auto">🍾</div>
+          <div class="w-full bg-emerald-500 text-white font-extrabold py-2 rounded-xl text-base md:text-lg">유리병</div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="text-center py-4 text-xs font-semibold text-emerald-700 bg-emerald-100 w-full mt-8">
+    🌱 분리배출 연습으로 우리의 푸른 지구를 지켜요!
+  </footer>
+
+
+  <!-- ================= [3. 결과 피드백 레이어 (O / X)] ================= -->
+  <!-- 정답 피드백 (O) -->
+  <div id="correct-overlay" class="fixed inset-0 bg-emerald-900/80 flex flex-col items-center justify-center z-50 hidden transition-all duration-200">
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-95 transform transition-all flex flex-col items-center">
+      <!-- 크게 그린 동그라미 O -->
+      <svg class="w-32 h-32 text-emerald-500 mb-4 animate-bounce" fill="none" stroke="currentColor" stroke-width="12" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+      </svg>
+      <h2 class="text-4xl font-extrabold text-emerald-600 mb-2">딩동댕! 🎉</h2>
+      <p id="correct-msg" class="text-gray-700 text-lg font-bold mb-4">정답이에요! 참 잘했어요!</p>
+      <p id="correct-desc" class="text-xs text-gray-500 bg-emerald-50 p-3 rounded-lg leading-relaxed border border-emerald-100"></p>
+    </div>
+  </div>
+
+  <!-- 오답 피드백 (X) -->
+  <div id="incorrect-overlay" class="fixed inset-0 bg-rose-900/80 flex flex-col items-center justify-center z-50 hidden transition-all duration-200">
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl scale-95 transform transition-all flex flex-col items-center">
+      <!-- 빨간색 가위표 X -->
+      <svg class="w-32 h-32 text-rose-500 mb-4 animate-pulse" fill="none" stroke="currentColor" stroke-width="12" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+      <h2 class="text-4xl font-extrabold text-rose-600 mb-2">삐-! 😮</h2>
+      <p id="incorrect-msg" class="text-gray-700 text-lg font-bold mb-4">다시 한번 생각해볼까요?</p>
+      <div class="bg-rose-50 p-4 rounded-xl border border-rose-100 text-rose-800 text-sm font-semibold leading-relaxed">
+        💡 힌트: <span id="incorrect-hint" class="underline decoration-wavy decoration-rose-400"></span>(으)로 만들어진 제품이에요. 다시 시도해봐요!
+      </div>
+      <button onclick="closeIncorrectOverlay()" class="mt-6 px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white font-extrabold rounded-xl shadow-md transition-colors w-full">
+        다시 해볼게요! 👍
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ================= [4. 게임 완료 결과 보고서] ================= -->
+  <div id="finish-screen" class="fixed inset-0 bg-emerald-900/90 flex flex-col items-center justify-center z-50 p-4 hidden">
+    <div class="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl border-4 border-yellow-300">
+      <div class="text-6xl mb-4 animate-bounce">🎓✨</div>
+      <h2 class="text-3xl font-extrabold text-emerald-800 mb-1">분리배출 척척 박사 인증서</h2>
+      <p class="text-gray-500 text-sm mb-6">아래 어린이는 모든 분리배출 훈련을 훌륭히 마쳤습니다.</p>
+
+      <div class="bg-amber-50 p-6 rounded-2xl border-2 border-yellow-200 text-center mb-6">
+        <h3 class="text-2xl font-black text-amber-800 mb-2"><span id="finish-player-name">우리반</span> 친구</h3>
+        <p class="text-gray-700 text-base font-semibold">도전한 문제: <span id="finish-total" class="font-bold">10</span>개 중 <span id="finish-score" class="font-bold text-emerald-600">10</span>개 완성!</p>
+        <p class="text-gray-500 text-xs mt-2">오늘 배운 분리배출 방법을 잊지 말고 일상생활에서도 실천해요!</p>
+      </div>
+
+      <div class="flex space-x-2">
+        <button onclick="restartGame()" class="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xl rounded-2xl shadow-md transition-all">
+          한 번 더 하기 🔄
+        </button>
+        <button onclick="resetToHome()" class="flex-1 py-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-extrabold text-xl rounded-2xl shadow-md transition-all">
+          홈으로 가기 🏠
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= [5. 자바스크립트 로직] ================= -->
+  <script>
+    // ---------------- [A. 게임 쓰레기 데이터베이스] ----------------
+    const trashDatabase = [
+      // 1. 종이 (paper)
+      { id: 'p1', name: '신문지', category: 'paper', emoji: '📰', desc: '돌돌 말거나 쌓아서 종이 수거함에 쏙 넣어요.', color: 'blue' },
+      { id: 'p2', name: '택배 상자', category: 'paper', emoji: '📦', desc: '테이프를 떼고 꾹 눌러 납작하게 접어 종이로 버려요.', color: 'blue' },
+      { id: 'p3', name: '스케치북', category: 'paper', emoji: '📓', desc: '철사 스프링이 있다면 스프링을 꼭 빼서 종이로 버려요.', color: 'blue' },
+      { id: 'p4', name: '종이컵', category: 'paper', emoji: '🥤', desc: '남은 음료수를 모두 비우고 가볍게 물로 씻은 뒤 종이로 버려요.', color: 'blue' },
+      
+      // 2. 비닐 (vinyl)
+      { id: 'v1', name: '과자 봉지', category: 'vinyl', emoji: '🛍️', desc: '딱지처럼 접지 말고 가볍게 펴서 비닐 수거함에 버려요.', color: 'pink' },
+      { id: 'v2', name: '비닐 쇼핑백', category: 'vinyl', emoji: '🛍️', desc: '투명하거나 깨끗한 비닐은 비닐 수거함으로 보내요.', color: 'pink' },
+      { id: 'v3', name: '라면 봉지', category: 'vinyl', emoji: '🍜', desc: '안에 묻은 수프 가루를 가볍게 털고 비닐로 버려요.', color: 'pink' },
+      { id: 'v4', name: '뽁뽁이 (에어캡)', category: 'vinyl', emoji: '🫧', desc: '택배 뽁뽁이는 구멍을 안 뚫어도 비닐 수거함으로 버려요.', color: 'pink' },
+
+      // 3. 플라스틱 (plastic)
+      { id: 'pl1', name: '생수 페트병', category: 'plastic', emoji: '🧴', desc: '겉에 비닐 라벨을 떼서 찌그러트린 후 플라스틱으로 버려요.', color: 'amber' },
+      { id: 'pl2', name: '샴푸 플라스틱 통', category: 'plastic', emoji: '🧴', desc: '물로 안쪽을 깨끗이 씻은 후에 플라스틱으로 버려요.', color: 'amber' },
+      { id: 'pl3', name: '플라스틱 컵', category: 'plastic', emoji: '🥤', desc: '빨대나 빨대 껍질은 일반쓰레기에 따로 분리해주세요.', color: 'amber' },
+      { id: 'pl4', name: '장난감 블록', category: 'plastic', emoji: '🧸', desc: '건전지나 다른 금속 부품이 없는 장난감은 플라스틱으로 버려요.', color: 'amber' },
+
+      // 4. 캔 (can)
+      { id: 'c1', name: '음료수 캔', category: 'can', emoji: '🥫', desc: '내용물을 모두 마시고 찌그러트려서 캔으로 버려요.', color: 'slate' },
+      { id: 'c2', name: '참치 통조림', category: 'can', emoji: '🥫', desc: '기름때를 깨끗이 물로 씻은 후 캔 수거함에 버려요.', color: 'slate' },
+      { id: 'c3', name: '꽁치 캔', category: 'can', emoji: '🥫', desc: '날카로운 부분에 손이 다치지 않게 조심히 분리해요.', color: 'slate' },
+      { id: 'c4', name: '부탄가스 통', category: 'can', emoji: '💨', desc: '안전하게 구멍을 내서 속의 가스를 뺀 후 캔으로 버려요.', color: 'slate' },
+
+      // 5. 유리 (glass)
+      { id: 'g1', name: '유리 음료병', category: 'glass', emoji: '🍾', desc: '병뚜껑(대체로 플라스틱/철)은 뺀 후 물로 헹궈 유리로 버려요.', color: 'emerald' },
+      { id: 'g2', name: '잼 유리병', category: 'glass', emoji: '🫙', desc: '속에 남은 잼을 깨끗이 물로 씻고 뚜껑은 따로 버려요.', color: 'emerald' },
+      { id: 'g3', name: '화장품 유리병', category: 'glass', emoji: '🧴', desc: '세안제로 씻어낸 후에 유리 수거함으로 버려요.', color: 'emerald' },
+      { id: 'g4', name: '참기름 병', category: 'glass', emoji: '🍾', desc: '기름기를 씻어낸 뒤 뚜껑을 빼고 유리 수거함에 버려요.', color: 'emerald' }
+    ];
+
+    // ---------------- [B. 오디오 합성음 연주 (Web Audio API)] ----------------
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    // 정답음: 레 - 솔 (맑고 청아한 실로폰 느낌)
+    function playCorrectSound() {
+      initAudio();
+      const now = audioCtx.currentTime;
+      
+      // 첫 번째 음
+      const osc1 = audioCtx.createOscillator();
+      const gain1 = audioCtx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(587.33, now); // D5
+      gain1.gain.setValueAtTime(0.15, now);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      // 두 번째 음 (타이밍 조절)
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(783.99, now + 0.15); // G5
+      gain2.gain.setValueAtTime(0.15, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.55);
+    }
+
+    // 오답음: 붕~ (다소 낮은 진동의 경고음)
+    function playIncorrectSound() {
+      initAudio();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now); // Low buzz
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    }
+
+    // ---------------- [C. 음성 낭독 기능 (Speech Synthesis)] ----------------
+    let ttsEnabled = true;
+
+    function toggleTTS() {
+      ttsEnabled = !ttsEnabled;
+      const btn = document.getElementById('btn-tts');
+      const icon = document.getElementById('tts-icon');
+      if (ttsEnabled) {
+        icon.textContent = '🔊';
+        btn.classList.remove('bg-gray-100', 'text-gray-600');
+        btn.classList.add('bg-blue-100', 'text-blue-700');
+        speakText("음성 안내를 시작합니다.");
+      } else {
+        icon.textContent = '🔇';
+        btn.classList.remove('bg-blue-100', 'text-blue-700');
+        btn.classList.add('bg-gray-100', 'text-gray-600');
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    function speakText(text) {
+      if (!ttsEnabled) return;
+      window.speechSynthesis.cancel(); // 이전 소리 취소
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ko-KR';
+      utterance.rate = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
+
+
+    // ---------------- [D. 게임 핵심 변수 및 제어] ----------------
+    let playerName = "우리반 친구";
+    let targetQuestionCount = 5;
+    let easyMode = true; // 도움말 모드 활성화 여부
+    
+    let activeGameQueue = [];
+    let currentItemIndex = 0;
+    let currentScore = 0;
+    
+    let selectedTrashElement = null; // 터치 방식을 위한 선택된 쓰레기 객체
+
+    // 시작 설정
+    function setTrashCount(count) {
+      targetQuestionCount = count;
+      // 버튼들 초기화 후 강조 변경
+      [5, 10, 15, 20].forEach(c => {
+        const btn = document.getElementById(`btn-count-${c}`);
+        btn.className = "py-3 rounded-xl border-2 font-extrabold text-xl transition-all border-gray-300 bg-white hover:border-emerald-400";
+      });
+      const targetBtn = document.getElementById(`btn-count-${count}`);
+      targetBtn.className = "py-3 rounded-xl border-2 font-extrabold text-xl transition-all border-emerald-500 bg-emerald-500 text-white shadow-md";
+    }
+
+    function toggleEasyMode() {
+      easyMode = !easyMode;
+      const btn = document.getElementById('btn-easy-mode');
+      if (easyMode) {
+        btn.textContent = "켜짐";
+        btn.className = "px-4 py-2 bg-emerald-500 text-white font-bold rounded-lg transition-all";
+      } else {
+        btn.textContent = "꺼짐";
+        btn.className = "px-4 py-2 bg-gray-400 text-white font-bold rounded-lg transition-all";
+      }
+    }
+
+    // ---------------- [E. 게임 시작 및 준비] ----------------
+    function startGame() {
+      playerName = document.getElementById('player-name').value.trim() || "우리반 친구";
+      document.getElementById('display-player-name').textContent = playerName;
+      document.getElementById('finish-player-name').textContent = playerName;
+
+      // 쓰레기 목록 셔플 및 잘라내기
+      const shuffled = [...trashDatabase].sort(() => 0.5 - Math.random());
+      activeGameQueue = shuffled.slice(0, targetQuestionCount);
+      
+      // 만약 정한 문제 수가 쓰레기 DB 크기보다 크다면 일부 복제하여 채우기
+      while (activeGameQueue.length < targetQuestionCount) {
+        activeGameQueue.push({...trashDatabase[Math.floor(Math.random() * trashDatabase.length)]});
+      }
+
+      currentItemIndex = 0;
+      currentScore = 0;
+      selectedTrashElement = null;
+
+      document.getElementById('start-screen').classList.add('hidden');
+      document.getElementById('finish-screen').classList.add('hidden');
+      
+      updateProgressBar();
+      loadNextItem();
+    }
+
+    function restartGame() {
+      startGame();
+    }
+
+    function resetToHome() {
+      window.speechSynthesis.cancel();
+      document.getElementById('start-screen').classList.remove('hidden');
+      document.getElementById('finish-screen').classList.add('hidden');
+    }
+
+    // 진행 바 및 스코어 텍스트 업데이트
+    function updateProgressBar() {
+      document.getElementById('progress-text').textContent = `${currentItemIndex}/${targetQuestionCount}`;
+      const percentage = (currentItemIndex / targetQuestionCount) * 100;
+      document.getElementById('progress-bar').style.width = `${percentage}%`;
+      document.getElementById('score-text').textContent = `${currentScore}점`;
+    }
+
+    // ---------------- [F. 쓰레기 데이터 배치 및 힌트 연출] ----------------
+    function loadNextItem() {
+      if (currentItemIndex >= targetQuestionCount) {
+        showGameFinished();
+        return;
+      }
+
+      // 1회용 선택 표시 제거
+      selectedTrashElement = null;
+
+      const currentItem = activeGameQueue[currentItemIndex];
+      const trashCard = document.getElementById('active-trash-card');
+      
+      document.getElementById('trash-emoji').textContent = currentItem.emoji;
+      document.getElementById('trash-name').textContent = currentItem.name;
+      document.getElementById('trash-desc').textContent = currentItem.desc;
+
+      // 도움말 힌트 모드가 활성화되었을 때 색상 가이드 제공
+      // (각 쓰레기 종류에 맞춰 테두리 및 그림자에 힌트 색상 부여)
+      trashCard.className = "bg-white border-4 rounded-2xl p-6 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:scale-105 transition-all shadow-md w-full max-w-xs relative bounce-item";
+      
+      // 수거함의 테두리 반짝임 클래스 초기화
+      document.querySelectorAll('.bin-target').forEach(bin => {
+        bin.classList.remove('guide-active');
+      });
+
+      if (easyMode) {
+        let activeBorderColorClass = "";
+        let targetCategory = currentItem.category;
+
+        // 알맞은 분류 색상 매핑
+        switch (targetCategory) {
+          case 'paper': activeBorderColorClass = 'border-blue-400 shadow-blue-200'; break;
+          case 'vinyl': activeBorderColorClass = 'border-pink-400 shadow-pink-200'; break;
+          case 'plastic': activeBorderColorClass = 'border-amber-400 shadow-amber-200'; break;
+          case 'can': activeBorderColorClass = 'border-slate-400 shadow-slate-200'; break;
+          case 'glass': activeBorderColorClass = 'border-emerald-400 shadow-emerald-200'; break;
+        }
+        trashCard.classList.add(activeBorderColorClass);
+
+        // 정답 수거함을 반짝이게 변경
+        const correctBin = document.querySelector(`.bin-target[data-category="${targetCategory}"]`);
+        if (correctBin) {
+          correctBin.classList.add('guide-active');
+        }
+      } else {
+        trashCard.classList.add('border-gray-200');
+      }
+
+      // 스피치 안내 읽기
+      const categoryKr = getCategoryKoreanName(currentItem.category);
+      speakText(`${currentItem.name}! 이 물건은 무엇으로 만들었을까요? 알맞은 수거함에 쏙 넣어주세요!`);
+    }
+
+    function getCategoryKoreanName(category) {
+      switch (category) {
+        case 'paper': return '종이';
+        case 'vinyl': return '비닐';
+        case 'plastic': return '플라스틱';
+        case 'can': return '캔';
+        case 'glass': return '유리';
+        default: return '일반쓰레기';
+      }
+    }
+
+    // ---------------- [G. 드래그 앤 드롭 & 클릭 조작 핸들링] ----------------
+    const dragCard = document.getElementById('active-trash-card');
+    const bins = document.querySelectorAll('.bin-target');
+
+    // 1. 드래그 앤 드롭 (데스크톱)
+    dragCard.addEventListener('dragstart', (e) => {
+      dragCard.classList.add('opacity-50');
+      e.dataTransfer.setData('text/plain', activeGameQueue[currentItemIndex].category);
+    });
+
+    dragCard.addEventListener('dragend', () => {
+      dragCard.classList.remove('opacity-50');
+    });
+
+    bins.forEach(bin => {
+      bin.addEventListener('dragover', (e) => {
+        e.preventDefault(); // 드롭을 허용하기 위해 기본동작 해제
+      });
+
+      bin.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const draggedCategory = e.dataTransfer.getData('text/plain');
+        const targetCategory = bin.getAttribute('data-category');
+        checkSortingResult(draggedCategory, targetCategory);
+      });
+    });
+
+    // 2. 터치/클릭 배출 (스마트보드 및 태블릿)
+    // 쓰레기 카드 자체를 누르면 테두리를 하이라이팅하여 선택했음을 인지
+    dragCard.addEventListener('click', (e) => {
+      e.stopPropagation();
+      initAudio(); // 클릭할 때 사운드 콘텍스트 잠금 해제 유도
+      selectedTrashElement = activeGameQueue[currentItemIndex];
+      
+      // 활성화 피드백 (진동하듯이 작게 크기 늘리기)
+      dragCard.classList.add('ring-4', 'ring-teal-400');
+      speakText(`${selectedTrashElement.name}! 아래 수거함 중 하나를 골라 터치해 보세요.`);
+    });
+
+    // 각 수거함 영역을 터치했을 때 처리
+    bins.forEach(bin => {
+      bin.addEventListener('click', () => {
+        if (selectedTrashElement) {
+          const draggedCategory = selectedTrashElement.category;
+          const targetCategory = bin.getAttribute('data-category');
+          checkSortingResult(draggedCategory, targetCategory);
+        } else {
+          // 쓰레기를 먼저 고르도록 안내
+          speakText("먼저 위에 있는 쓰레기 카드를 눌러주세요!");
+        }
+      });
+    });
+
+    // 바탕화면 클릭하면 선택 풀리기
+    document.addEventListener('click', () => {
+      if (selectedTrashElement) {
+        dragCard.classList.remove('ring-4', 'ring-teal-400');
+        selectedTrashElement = null;
+      }
+    });
+
+
+    // ---------------- [H. 배출 정답 여부 및 피드백 처리] ----------------
+    function checkSortingResult(draggedCategory, targetCategory) {
+      const currentItem = activeGameQueue[currentItemIndex];
+      
+      // 선택 하이라이팅 초기화
+      dragCard.classList.remove('ring-4', 'ring-teal-400');
+
+      if (draggedCategory === targetCategory) {
+        // 정답 (O)
+        currentScore += 10;
+        playCorrectSound();
+        showCorrectOverlay(currentItem);
+      } else {
+        // 오답 (X)
+        playIncorrectSound();
+        showIncorrectOverlay(currentItem);
+      }
+    }
+
+    // 1. 동그라미(O) 정답 레이어 노출
+    function showCorrectOverlay(item) {
+      const overlay = document.getElementById('correct-overlay');
+      const desc = document.getElementById('correct-desc');
+      
+      desc.textContent = item.desc;
+      overlay.classList.remove('hidden');
+      
+      speakText(`딩동댕! 정답이에요! ${item.name}은 ${getCategoryKoreanName(item.category)}로 잘 분리했어요!`);
+
+      // 1.5초 후 자동으로 닫히며 다음 아이템 로드
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        currentItemIndex++;
+        updateProgressBar();
+        loadNextItem();
+      }, 2000);
+    }
+
+    // 2. 가위표(X) 오답 레이어 노출
+    function showIncorrectOverlay(item) {
+      const overlay = document.getElementById('incorrect-overlay');
+      const hintSpan = document.getElementById('incorrect-hint');
+      
+      hintSpan.textContent = getCategoryKoreanName(item.category);
+      overlay.classList.remove('hidden');
+
+      speakText(`삐-! 다시 한 번 생각해보세요. 이것은 ${getCategoryKoreanName(item.category)}이에요. 다시 도전해보세요!`);
+    }
+
+    function closeIncorrectOverlay() {
+      document.getElementById('incorrect-overlay').classList.add('hidden');
+      // 오답인 경우 다음 문제로 바로 넘어가지 않고, 현재 문제를 다시 맞추도록 유지합니다 (반복 학습 권장).
+      speakText(`${activeGameQueue[currentItemIndex].name}! 이것은 어디로 가야 할까요? 천천히 골라보아요!`);
+    }
+
+    // ---------------- [I. 게임 완주 결과] ----------------
+    function showGameFinished() {
+      document.getElementById('finish-total').textContent = targetQuestionCount;
+      document.getElementById('finish-score').textContent = targetQuestionCount;
+      document.getElementById('finish-screen').classList.remove('hidden');
+
+      speakText(`축하합니다! ${playerName}님은 모든 분리배출 문제를 멋지게 해결하여 척척 박사 인증서를 획득했습니다! 대단해요!`);
+    }
+  </script>
+</body>
+</html>
